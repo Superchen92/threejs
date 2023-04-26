@@ -1,0 +1,14 @@
+{
+  "name": "threejs",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "dev": "vite"
+  },
+  "author": "chenyuchao",
+  "license": "ISC",
+  "dependencies": {
+    "three": "^0.151.3",
+    "vite": "^4.2.1"
+  }
+}
