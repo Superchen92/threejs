@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>阴影</title>
+        <style>
+			body { margin: 0; }
+		</style>
+	</head>
+	<body></body>
+</html>
+
+<script type="module">
+import * as THREE from 'three'
+import { resizeRendererToDisplaySize } from './index.js'
+
+const scene = new THREE.Scene()
+scene.background = new THREE.Color('white')
+const renderer = new THREE.WebGLRenderer()
+renderer.setSize(window.innerWidth, window.innerHeight)
+document.body.appendChild(renderer.domElement)
+const camera = new THREE.PerspectiveCamera(90, 2, 0.1, 100)
+camera.position.set(0, 10, 20)
+camera.lookAt(0, 0, 0);
+
+//加载纹理
+const loader = new THREE.TextureLoader()
+const texture = loader.load('https://threejs.org/manual/examples/resources/images/checker.png')
+texture.wrapS = THREE.RepeatWrapping
+texture.wrapT = THREE.RepeatWrapping
+texture.magFilter = THREE.NearestFilter
+texture.repeat.set(20, 20)
+
+const planeGeo = new THREE.PlaneGeometry(40, 40)
+const planeMat = new THREE.MeshBasicMaterial({
+    map: texture,
+    side: THREE.DoubleSide
+})
+planeMat.color.setRGB(1.5, 1.5, 1.5);
+const mesh = new THREE.Mesh(planeGeo, planeMat)
+mesh.rotation.x = Math.PI * -.5
+scene.add(mesh)
+
+//创建一个球体
+const sphereGeo = new THREE.SphereGeometry(1, 32, 16)
+
+const shadowGeo = new THREE.PlaneGeometry(1, 1)
+
+function render(){
+    if (resizeRendererToDisplaySize(renderer)) {
+      const canvas = renderer.domElement;
+      camera.aspect = canvas.clientWidth / canvas.clientHeight;
+      camera.updateProjectionMatrix();
+    }
+
+    renderer.render(scene, camera);
+
+    requestAnimationFrame(render);
+}
+
+requestAnimationFrame(render);
+</script>

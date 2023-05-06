@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>光照</title>
+		<style>
+			body { margin: 0; }
+		</style>
+	</head>
+	<body></body>
+</html>
+
+<script type="module">
+import * as THREE from 'three'
+import {GUI} from 'three/addons/libs/lil-gui.module.min.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { resizeRendererToDisplaySize } from './index.js'
+
+const renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight)
+document.body.appendChild(renderer.domElement)
+const scene = new THREE.Scene()
+const camera = new THREE.PerspectiveCamera(90, 2, 0.1, 100)
+camera.position.set(0, 10, 20)
+
+//创建一个控制器
+const controls = new OrbitControls(camera, renderer.domElement)
+controls.target.set(0, 5, 0)
+controls.update()
+
+//加载纹理
+const loader = new THREE.TextureLoader()
+const texture = loader.load('https://threejs.org/manual/examples/resources/images/checker.png')
+texture.wrapS = THREE.RepeatWrapping
+texture.wrapT = THREE.RepeatWrapping
+texture.magFilter = THREE.NearestFilter
+texture.repeat.set(20, 20)
+
+//创建一个平面
+const planeGeo = new THREE.PlaneGeometry(40, 40)
+const planeMat = new THREE.MeshPhongMaterial({
+    map: texture,
+    side: THREE.DoubleSide
+})
+const mesh = new THREE.Mesh(planeGeo, planeMat)
+mesh.rotation.x = Math.PI * -.5
+scene.add(mesh)
+
+{
+  const cubeSize = 4;
+  const cubeGeo = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
+  const cubeMat = new THREE.MeshPhongMaterial({color: '#8AC'});
+  const mesh = new THREE.Mesh(cubeGeo, cubeMat);
+  mesh.position.set(cubeSize + 1, cubeSize / 2, 0);
+  scene.add(mesh);
+}
+{
+  const sphereRadius = 3;
+  const sphereWidthDivisions = 32;
+  const sphereHeightDivisions = 16;
+  const sphereGeo = new THREE.SphereGeometry(sphereRadius, sphereWidthDivisions, sphereHeightDivisions);
+  const sphereMat = new THREE.MeshPhongMaterial({color: '#CA8'});
+  const mesh = new THREE.Mesh(sphereGeo, sphereMat);
+  mesh.position.set(-sphereRadius - 1, sphereRadius + 2, 0);
+  scene.add(mesh);
+}
+
+const gui = new GUI();
+class ColorGUIHelper {
+    constructor(object, prop){
+        this.object = object
+        this.prop = prop
+    }
+
+    get value() {
+        return `#${this.object[this.prop].getHexString()}`
+    }
+
+    set value(hexString){
+        this.object[this.prop].set(hexString)
+    }
+}
+function makeXYZGUI(gui, vector3, name, onChangeFn) {
+    const folder = gui.addFolder(name)
+    folder.add(vector3, 'x', -10, 10).onChange(onChangeFn);
+    folder.add(vector3, 'y', 0, 10).onChange(onChangeFn);
+    folder.add(vector3, 'z', -10, 10).onChange(onChangeFn);
+    folder.open();
+}
+
+//环境光
+// useAmbientLight()
+//半球光
+// useHemisphereLight()
+//方向光
+// useDirectionLight()
+//点光源
+// usePointLight()
+//聚光灯
+useSpotLight()
+
+function render(){
+    if (resizeRendererToDisplaySize(renderer)) {
+      const canvas = renderer.domElement;
+      camera.aspect = canvas.clientWidth / canvas.clientHeight;
+      camera.updateProjectionMatrix();
+    }
+
+    renderer.render(scene, camera);
+
+    requestAnimationFrame(render);
+}
+
+requestAnimationFrame(render);
+
+
+//各种光源
+//环境光
+function useAmbientLight() {
+    const light = new THREE.AmbientLight(0xFFFFFF, 1)
+    scene.add(light)
+    gui.addColor(new ColorGUIHelper(light, 'color'), 'value').name('color')
+    gui.add(light, 'intensity', 0, 2, 0.01)
+}
+
+//半球光
+function useHemisphereLight() {
+    const light = new THREE.HemisphereLight(0xB1E1FF, 0XB97A20, 1)
+    scene.add(light)
+    
+    gui.addColor(new ColorGUIHelper(light, 'color'), 'value').name('skyColor')
+    gui.addColor(new ColorGUIHelper(light, 'groundColor'), 'value').name('groundColor');
+    gui.add(light, 'intensity', 0, 2, 0.01)
+}
+
+//方向光
+function useDirectionLight() {
+    const light = new THREE.DirectionalLight(0xFFFFFF, 1)
+    light.position.set(0, 10, 0)
+    light.target.position.set(-5, 0, 0)
+    scene.add(light)
+    scene.add(light.target)
+
+    gui.addColor(new ColorGUIHelper(light, 'color'), 'value').name('color')
+    gui.add(light.target.position, 'x', -10, 10);
+    gui.add(light.target.position, 'z', -10, 10);
+    gui.add(light.target.position, 'y', 0, 10);
+
+    //光辅助线
+    const helper = new THREE.DirectionalLightHelper(light);
+    scene.add(helper);
+    
+    makeXYZGUI(gui, light.position, 'position', updateLight);
+    makeXYZGUI(gui, light.target.position, 'target', updateLight);
+
+    function updateLight() {
+        light.target.updateMatrixWorld();
+        helper.update();
+    }
+    updateLight();
+}
+
+//点光源
+function usePointLight() {
+    const light =  new THREE.PointLight(0xFFFFFF, 1)
+    light.position.set(0, 10, 0)
+    scene.add(light)
+
+    gui.addColor(new ColorGUIHelper(light, 'color'), 'value').name('skyColor')
+    gui.add(light, 'intensity', 0, 2, 0.01)
+    gui.add(light, 'distance', 0, 40).onChange(updateLight);
+
+    const helper = new THREE.PointLightHelper(light)
+    scene.add(helper);
+
+    function updateLight() {
+        // light.target.updateMatrixWorld();
+        helper.update();
+    }
+    updateLight();
+
+    makeXYZGUI(gui, light.position, 'position', updateLight);
+}
+
+//聚光灯
+function useSpotLight() {
+    const light = new THREE.SpotLight(0xFFFFFF, 1)
+    light.position.set(0, 10, 0)
+    light.target.position.set(-5, 0, 0);
+    scene.add(light)
+    scene.add(light.target)
+    const helper = new THREE.SpotLightHelper(light)
+    scene.add(helper)
+
+    class DegRadHelper {
+        constructor(obj, prop) {
+            this.obj = obj;
+            this.prop = prop;
+        }
+        get value() {
+            return THREE.MathUtils.radToDeg(this.obj[this.prop]);
+        }
+        set value(v) {
+            this.obj[this.prop] = THREE.MathUtils.degToRad(v);
+        }
+    }
+
+    function updateLight() {
+        light.target.updateMatrixWorld();
+        helper.update();
+    }
+    updateLight();
+
+    gui.addColor(new ColorGUIHelper(light, 'color'), 'value').name('color');
+    gui.add(light, 'intensity', 0, 2, 0.01);
+    gui.add(light, 'distance', 0, 40).onChange(updateLight);
+    gui.add(new DegRadHelper(light, 'angle'), 'value', 0, 90).name('angle').onChange(updateLight);
+    gui.add(light, 'penumbra', 0, 1, 0.01);
+
+    makeXYZGUI(gui, light.position, 'position', updateLight);
+    makeXYZGUI(gui, light.target.position, 'target', updateLight);
+}
+
+</script>
